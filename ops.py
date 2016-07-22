@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+from tensorflow.python.framework import ops
 
 def fully_connected(input_, output_size, scope=None, stddev=1.0, with_bias = True):
     shape = input_.get_shape().as_list()
@@ -66,7 +67,7 @@ def conv_transpose(x, outputShape, name):
         b = tf.get_variable("b",[outputShape[-1]], initializer=tf.constant_initializer(0.0))
         convt = tf.nn.conv2d_transpose(x, w, output_shape=outputShape, strides=[1,2,2,1])
         return convt
-        
+
 # leaky reLu unit
 def lrelu(x, leak=0.2, name="lrelu"):
     with tf.variable_scope(name):
@@ -83,3 +84,33 @@ def dense(x, inputFeatures, outputFeatures, scope=None, with_w=False):
             return tf.matmul(x, matrix) + bias, matrix, bias
         else:
             return tf.matmul(x, matrix) + bias
+
+
+def binary_cross_entropy_with_logits(logits, targets, name=None):
+    """Computes binary cross entropy given `logits`.
+    For brevity, let `x = logits`, `z = targets`.  The logistic loss is
+        loss(x, z) = - sum_i (x[i] * log(z[i]) + (1 - x[i]) * log(1 - z[i]))
+    Args:
+        logits: A `Tensor` of type `float32` or `float64`.
+        targets: A `Tensor` of the same type and shape as `logits`.
+    """
+    eps = 1e-12
+    with ops.op_scope([logits, targets], name, "bce_loss") as name:
+        logits = ops.convert_to_tensor(logits, name="logits")
+        targets = ops.convert_to_tensor(targets, name="targets")
+        return tf.reduce_mean(-(logits * tf.log(targets + eps) +
+                              (1. - logits) * tf.log(1. - targets + eps)))
+
+
+def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=False):
+    shape = input_.get_shape().as_list()
+
+    with tf.variable_scope(scope or "Linear"):
+        matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32,
+                                 tf.random_normal_initializer(stddev=stddev))
+        bias = tf.get_variable("bias", [output_size],
+            initializer=tf.constant_initializer(bias_start))
+        if with_w:
+            return tf.matmul(input_, matrix) + bias, matrix, bias
+        else:
+            return tf.matmul(input_, matrix) + bias
