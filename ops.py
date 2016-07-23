@@ -2,21 +2,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.framework import ops
 
-def fully_connected(input_, output_size, scope=None, stddev=1.0, with_bias = True):
-    shape = input_.get_shape().as_list()
-
-    with tf.variable_scope(scope or "FC"):
-        matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32,
-            tf.random_normal_initializer(stddev=stddev))
-
-        result = tf.matmul(input_, matrix)
-
-        if with_bias:
-            bias = tf.get_variable("bias", [1, output_size],
-                initializer=tf.random_normal_initializer(stddev=stddev))
-            result += bias*tf.ones([shape[0], 1], dtype=tf.float32)
-
-    return result
 
 class batch_norm(object):
     """Code modification of http://stackoverflow.com/a/33950177"""
@@ -101,16 +86,13 @@ def binary_cross_entropy_with_logits(logits, targets, name=None):
         return tf.reduce_mean(-(logits * tf.log(targets + eps) +
                               (1. - logits) * tf.log(1. - targets + eps)))
 
+def merge(images, size):
+    h, w = images.shape[1], images.shape[2]
+    img = np.zeros((h * size[0], w * size[1]))
 
-def linear(input_, output_size, scope=None, stddev=0.02, bias_start=0.0, with_w=False):
-    shape = input_.get_shape().as_list()
+    for idx, image in enumerate(images):
+        i = idx % size[1]
+        j = idx / size[1]
+        img[j*h:j*h+h, i*w:i*w+w] = image
 
-    with tf.variable_scope(scope or "Linear"):
-        matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32,
-                                 tf.random_normal_initializer(stddev=stddev))
-        bias = tf.get_variable("bias", [output_size],
-            initializer=tf.constant_initializer(bias_start))
-        if with_w:
-            return tf.matmul(input_, matrix) + bias, matrix, bias
-        else:
-            return tf.matmul(input_, matrix) + bias
+    return img
